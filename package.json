@@ -1,0 +1,19 @@
+{
+  "name": "myfirstbot",
+  "version": "1.0.0",
+  "description": "This is a sample telegram bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "author": "Hardik Thaker",
+  "license": "ISC",
+  "dependencies": {
+    "telegraf": "^4.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}
