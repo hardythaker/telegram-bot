@@ -1,6 +1,8 @@
+//TODO: How to hide all the previous messages from a new joined users and show after verification
+//TODO: Instead of user_ID we can store telegram username as well in sheet, but what is user changes its user name
 const { Telegraf } = require('telegraf');
 const {google} = require('googleapis');
-const {TOKEN, SCOPES, SPREADSHEETID, SHEETNAME, USER_ID_COLUMN} = require('./config')
+const {TOKEN, SCOPES, SPREADSHEETID, SHEETNAME, USER_ID_COLUMN, GOOGLE_FORM_ID} = require('./config')
 
 const bot = new Telegraf(TOKEN);
 
@@ -21,7 +23,7 @@ bot.action('verify',async (ctx)=>{
     
     try {
         if(await getGoogleSheetData(user_id)){
-            //await setUserChatPermission(chatId,user_id, true)
+            await setUserChatPermission(chatId,user_id, true)
             await bot.telegram.answerCbQuery(cq.id)
             await bot.telegram.editMessageText(chatId,cq.message.message_id,"","You are now verified")
         }
@@ -33,23 +35,39 @@ bot.action('verify',async (ctx)=>{
     }
 })
 
-bot.command('googlelink', async (ctx) => {
+bot.on('new_chat_members', async (ctx) => {
     try {
-        // Logic goes here...
-        //await setUserChatPermission(ctx.chat.id, ctx.from.id, false);
-        const url = `https://docs.google.com/forms/d/e/1FAIpQLSeXAzhaoknOqxzVFPfynjtqARjZnooPw1NjR82ENxEJyBWXDg/viewform?entry.1312478144=${ctx.from.id}`
-        await bot.telegram.sendMessage(ctx.chat.id, "Kindly fill below google form./n Once done, Kindly click on verify button to get access to chat. ",{
-            reply_markup:{
-                inline_keyboard:[
-                    [
-                        {text:'Form', url }
-                    ],
-                    [
-                        {text:'Verify', callback_data:'verify' }
+        // console.log(ctx)
+        // console.log(ctx.from)
+        // console.log(ctx.chat)
+        // console.log(ctx.message.new_chat_participant)
+        // console.log(ctx.message.new_chat_member)
+        // console.log(ctx.message.new_chat_members)
+        const chatId = ctx.chat.id
+        const newMemberId = ctx.message.new_chat_member.id
+        const fromId = ctx.from.id
+        const newMemberFirstName = ctx.message.new_chat_member.first_name
+        const newMemberLastName = ctx.message.new_chat_member.last_name
+
+        await setUserChatPermission(chatId, newMemberId, false);
+        const url = `${GOOGLE_FORM_ID}${newMemberId}`
+        await bot.telegram.sendMessage(chatId, 
+            `Hi ${newMemberFirstName} ${newMemberLastName},\nWelcome to the group!\nKindly fill below google form to get access to groups chat.\nOnce done, Kindly click on verify button to get yourself verifed.`,
+            {
+                reply_markup:{
+                    inline_keyboard:[
+                        [
+                            {text:'Form', url }
+                        ],
+                        [
+                            {text:'Verify', callback_data:'verify' }
+                        ]
                     ]
-                ]
-            }
-        })
+                },
+                parse_mode: 'HTML',
+                reply_to_message_id: ctx.message.message_id,
+                allow_sending_without_reply: true
+            })
     } catch (e) {
         await bot.telegram.sendMessage(e.on.payload.chat_id, e.response.description)
         console.error(e);
@@ -85,6 +103,9 @@ async function getGoogleSheetData(user_id){
 
 bot.launch();
 
+// Enable graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
 // const approvedUsers = [];
 
