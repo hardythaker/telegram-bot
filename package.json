@@ -11,6 +11,7 @@
   "author": "Hardik Thaker",
   "license": "ISC",
   "dependencies": {
+    "googleapis": "^100.0.0",
     "telegraf": "^4.7.0"
   },
   "devDependencies": {

@@ -1,34 +1,32 @@
 const { Telegraf } = require('telegraf');
-const {botToken} = require('./config')
-const bot = new Telegraf(botToken);
+const {google} = require('googleapis');
+const {TOKEN, SCOPES, SPREADSHEETID, SHEETNAME, USER_ID_COLUMN} = require('./config')
 
-const users = [
-    {first_name: 'Rithu', last_name: 'Dhanki', user_id: 910940623},
-    {first_name: 'Hardik', last_name: 'Thaker', user_id: 839771850}
-]
+const bot = new Telegraf(TOKEN);
 
-bot.command('/allowedall',(ctx, next)=>{
-    console.log(ctx.from);
-    bot.telegram.restrictChatMember('-1001769069041','910940623',{
-        can_send_messages : true
-    })
-})
+// bot.command('/allowedall',(ctx, next)=>{
+//     //console.log(ctx.from);
+//     bot.telegram.restrictChatMember('-1001769069041','910940623',{
+//         can_send_messages : true
+//     })
+// })
 
 bot.action('verify',async (ctx)=>{
-    console.log(ctx)
+    //console.log(ctx)
     const cq = ctx.callbackQuery;
-    console.log(cq.from)
+    //console.log(cq.from)
     const user_id = cq.from.id;
-    console.log(cq.message)
+    //console.log(cq.message)
     const chatId = cq.message.chat.id;
+    
     try {
-        if(users[0].user_id == user_id){
-            await setUserChatPermission(chatId,user_id, true)
+        if(await getGoogleSheetData(user_id)){
+            //await setUserChatPermission(chatId,user_id, true)
             await bot.telegram.answerCbQuery(cq.id)
             await bot.telegram.editMessageText(chatId,cq.message.message_id,"","You are now verified")
         }
         else{
-            await setUserChatPermission(chatId,user_id, false)
+            await bot.telegram.sendMessage(chatId,"Verification Failed. Please try again..")
         }
     } catch (e) {
         console.error(e);
@@ -38,13 +36,13 @@ bot.action('verify',async (ctx)=>{
 bot.command('googlelink', async (ctx) => {
     try {
         // Logic goes here...
-        await setUserChatPermission(ctx.chat.id, ctx.from.id, false);
+        //await setUserChatPermission(ctx.chat.id, ctx.from.id, false);
         const url = `https://docs.google.com/forms/d/e/1FAIpQLSeXAzhaoknOqxzVFPfynjtqARjZnooPw1NjR82ENxEJyBWXDg/viewform?entry.1312478144=${ctx.from.id}`
-        await bot.telegram.sendMessage(ctx.chat.id, "Kindly fill below google form link",{
+        await bot.telegram.sendMessage(ctx.chat.id, "Kindly fill below google form./n Once done, Kindly click on verify button to get access to chat. ",{
             reply_markup:{
                 inline_keyboard:[
                     [
-                        {text:'Google form', url }
+                        {text:'Form', url }
                     ],
                     [
                         {text:'Verify', callback_data:'verify' }
@@ -53,6 +51,7 @@ bot.command('googlelink', async (ctx) => {
             }
         })
     } catch (e) {
+        await bot.telegram.sendMessage(e.on.payload.chat_id, e.response.description)
         console.error(e);
     }
 });
@@ -61,6 +60,27 @@ async function setUserChatPermission(chatId, userId, sendPermission){
     await bot.telegram.restrictChatMember(chatId,userId,{
         can_send_messages : sendPermission
     })
+}
+
+async function getGoogleSheetData(user_id){
+    const auth = new google.auth.GoogleAuth({
+        keyFile: "credentials.json",
+        scopes: SCOPES
+    })
+    const client = await auth.getClient();
+    const sheets = google.sheets({version: 'v4', auth: client});
+    
+    // const metadata = await sheets.spreadsheets.get({
+    //     spreadsheetId: SPREADSHEETID
+    // })
+
+    const data = await sheets.spreadsheets.values.get({
+        auth,
+        spreadsheetId: SPREADSHEETID,
+        range:`${SHEETNAME}!${USER_ID_COLUMN}`,
+    })
+    console.log(data.data.values);
+    return data.data.values.some(x => x == user_id);
 }
 
 bot.launch();
