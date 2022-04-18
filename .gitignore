@@ -1,3 +1,4 @@
 node_modules
 config.js
 credentials.json
+example_db.json
