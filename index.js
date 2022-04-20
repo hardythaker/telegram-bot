@@ -1,9 +1,8 @@
-//TODO: Instead of user_ID we can store telegram username as well in sheet, but what if user changes its user name
 //TODO: Time limt for all the messages from the bot
 //TODO: Need to provide some fallback mechanism if user verification gets failed multiple times.
 //TODO: LOW: Remove the google form data if user lefts the group
 //TODO: LOW: Option to set that which verification method to be used.
-//TODO: Let user know that there Request is approved or not. and provide fallback.
+//TODO: DONE: Let user know that there Request is approved or not. and provide fallback.
 //TODO: FIXED: Bot Should not act or read on the messages sent in the group. //Fixed for /start and Photo Event on which bot reacts.
 //TODO: Remove await where ever required and test. lets try with the methods which are not using any variables
 //TODO: LOW: Error logging to a seprate admin group.
@@ -11,22 +10,18 @@
 //TODO: Integrate Winston with Event, UserID, Time format
 //TODO: Webpack to min the script
 //TODO: PROD - DEV diffrentiate to run express or not
-//TODO: Need to clear the session after rejecting the Request
+//*******************************************************
+//TODO: DONE: Need to clear the session after rejecting the Request
+//*******************************************************
 
 //Only for development browser testing
-const express = require('express');
-const http = require('http');
-const hostname = 'localhost';
-const port = 3000;
-const app = express();
-let LOGS = [];
-let DATA;
+const browserLog = require('./web');
 //END
 
 const { Telegraf } = require('telegraf');
 const LocalSession = require('telegraf-session-local')
 const {google} = require('googleapis');
-const {SCOPES, SHEETNAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID,
+const {SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID,
     IMAGE_TEXT, VARIFICATION_FAILED_TEXT, CHAT_JOIN_REQUEST_TEXT, GET_CAPTION_TEXT} = require('./constants');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -272,10 +267,18 @@ bot.action('confirmReject', async(ctx)=>{
 
     try{
         if(await ctx.declineChatJoinRequest(userId)){
-            return await ctx.editMessageCaption(`${caption}\nRejected by ${name}`,{reply_markup:{}})
-            
+            //Remove the session of the Rejected User
+            localSession.DB.get('sessions').removeById(userId).write()
+            //Update in the group that who rejected
+            await ctx.editMessageCaption(`${caption}\nRejected by ${name}`,{reply_markup:{}})
+            //Inform the user
+            await ctx.telegram.sendMessage(userId,`Your Request to Join the group has been Rejected!!!
+\nYou can again start the verification by sending <code>/start</code> command to this bot.
+\nPlease make sure you have filled the Google Form with correct data and you are sending the first page of the agreement, to avoid rejection of Joining Request`)
         }
-        ctx.answerCbQuery('Error: User Rejection failed!!!',{show_alert: true});
+        else{
+            ctx.answerCbQuery('Error: User Rejection failed!!!',{show_alert: true});
+        }
     }
     catch(e){
         console.error(e);
@@ -292,8 +295,8 @@ bot.on('new_chat_members', async (ctx) => {
     browserLog('new_chat_members',ctx)
     
     const formData = ctx.session.formData;
-    //Clear the user session since user has joined the group
     ctx.telegram.sendMessage(formData[formData.length-1],'Your Request to Join the group has been Approved!!!')
+    //Clear the user session since user has joined the group
     ctx.session = null
 })
 
@@ -323,7 +326,7 @@ async function verifyAndGetFormData(user_id){
     const data = await sheets.spreadsheets.values.get({
         auth,
         spreadsheetId: process.env.SPREADSHEET_ID,
-        range:`${SHEETNAME}!${COLUMNS}`
+        range:`${SHEET_NAME}!${COLUMNS}`
     })
     const row = data.data.values.find(x=> x.some(y => y == user_id));
     console.log(row);
@@ -364,35 +367,3 @@ bot.launch({
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
-//Only for development browser testing
-// safely handles circular references
-JSON.safeStringify = (obj, indent = 2) => {
-    let cache = [];
-    const retVal = JSON.stringify(
-      obj,
-      (key, value) =>
-        typeof value === "object" && value !== null
-          ? cache.includes(value)
-            ? undefined // Duplicate reference found, discard key
-            : cache.push(value) && value // Store value in our collection
-          : value,
-      indent
-    );
-    cache = null;
-    return retVal;
-};
-
-const browserLog = (key, data) => { 
-    LOGS.push({[key]: data});
-    DATA = JSON.safeStringify(LOGS)
-}
-
-app.use((req, res, next) => {
-    res.end(DATA);
-}); 
-
-const server = http.createServer(app);
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
-//END
