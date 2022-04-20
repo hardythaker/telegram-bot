@@ -12,7 +12,9 @@ Once done, Kindly click on verify button to get yourself verifed.`
 const IMAGE_TEXT = `Thank you for filling out the form,
 \nKindly Send the photo of the first page of your agrement.
 \nPlease note that first page of agreement does not contain any of your personal infomation. We are collecting this information so that outsider cannot join the our group and your information realted to you and your flat will be safe and only accessible amongst the other owners. Please make sure you are only uploading first page of agreement and not other pages.
-\n<b>Note:</b> This image will be further verified by the group admins, if you're sending anything else other than first page of the agreement, your request will be rejected!!!`
+\n<b>Note:</b> This image will be further verified by the group admins, if you're sending anything else other than first page of the agreement, your request will be rejected!!!
+\nBut why only first page of aggreement?
+-As of now we dont have any other mechanism to verify the member.`
 
 const VARIFICATION_FAILED_TEXT = `Verification Failed.\nPlease make sure you have filled the form correctly and try again.
 \nIf you are still facing the issues, kindly type /help in this chat.`

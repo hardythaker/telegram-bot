@@ -79,6 +79,7 @@ bot.start(async (ctx) => {
     } catch (e) {
         console.error(e);
         await ctx.reply(e.response.description)
+        throw e;
     }
 });
 
@@ -137,8 +138,8 @@ bot.on('photo',async (ctx)=>{
         })
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+       await ctx.reply(e.response.description)
+       throw e
     }
 })
 
@@ -353,8 +354,20 @@ function getUserIdFromCaption(caption){
     return userId;
 }
 
+bot.catch((err, ctx)=>{
+    ctx.reply(err.response.description || err)
+    console.log("Error Caught")
+    console.log(err.response)
+    console.log(ctx);
+})
+
 bot.launch({
-    allowedUpdates:['chat_member','callback_query','chat_join_request','message']
+    allowedUpdates:['callback_query','chat_join_request','message']
+}).then(
+    console.log('Bot is started and listening...')
+).catch((err) =>{
+    console.log('Unable to start the bot...')
+    console.log(err);
 });
 
 // if (process.env.NODE_ENV === 'production') {
