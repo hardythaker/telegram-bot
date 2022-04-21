@@ -3,6 +3,7 @@ const SHEET_NAME="Form Responses 2"
 const COLUMNS="A:D"
 const LINK_EXPIRES_IN=1 //minutes
 const GROUP_ID = "-1001769069041"
+const LOGS_GROUP_ID = '-786553495'
 
 const GET_GREETING_TEXT = (fullname) => `Hi ${fullname}
 Welcome to the group!
@@ -27,5 +28,5 @@ UserId: ${sessionRow[3]}
 Name: ${sessionRow[1]} ${sessionRow[2]}
 `
 
-module.exports = { SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, 
+module.exports = { SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, LOGS_GROUP_ID,
     GET_GREETING_TEXT, GROUP_ID, IMAGE_TEXT, VARIFICATION_FAILED_TEXT, CHAT_JOIN_REQUEST_TEXT, GET_CAPTION_TEXT}

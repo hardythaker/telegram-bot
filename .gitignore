@@ -2,3 +2,5 @@ node_modules
 credentials.json
 example_db.json
 .env
+info.log
+error.log

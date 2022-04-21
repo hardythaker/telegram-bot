@@ -15,13 +15,21 @@
 //*******************************************************
 
 //Only for development browser testing
-const browserLog = require('./web');
+let browserLog;
+if(process.env.NODE_ENV === 'development') 
+{    
+    browserLog = require('./web');
+}
+else{
+    browserLog = (a,b) =>{}
+}
 //END
 
 const { Telegraf } = require('telegraf');
 const LocalSession = require('telegraf-session-local')
+const logger = require('./logger')
 const {google} = require('googleapis');
-const {SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID,
+const {SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID, LOGS_GROUP_ID,
     IMAGE_TEXT, VARIFICATION_FAILED_TEXT, CHAT_JOIN_REQUEST_TEXT, GET_CAPTION_TEXT} = require('./constants');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -57,12 +65,13 @@ const confirmRejectGoBackKeyboard = {
 }
 
 bot.start(async (ctx) => {
-    console.log('Start')
-    browserLog("Start", ctx)
-
+    //browserLog("Start", ctx)
+    
     //To avoid listening commands or messages in group chat
     if(ctx.chat.type != 'private') return null 
     try {
+        logger.info('Start', ctx.message)
+
         const ctxFrom = ctx.from
         const fullname = `${ctxFrom.first_name} ${ctxFrom.last_name || ''}`
         const url = `${process.env.GOOGLE_FORM_URL}${ctxFrom.id}`
@@ -77,8 +86,8 @@ bot.start(async (ctx) => {
             parse_mode: 'HTML',
         })
     } catch (e) {
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
         throw e;
     }
 });
@@ -87,8 +96,8 @@ bot.use(localSession.middleware())
 
 //Verify that the user has filled the google form or not.
 bot.action('verify',async (ctx)=>{
-    console.log('verify')
-    browserLog("Verify", ctx)
+    //browserLog("Verify", ctx)
+    logger.info('Verify', ctx.update)
     try {
         const formData = await verifyAndGetFormData(ctx.callbackQuery.from.id)
 
@@ -104,8 +113,9 @@ bot.action('verify',async (ctx)=>{
             await ctx.answerCbQuery(VARIFICATION_FAILED_TEXT,{show_alert: true})
         }
     } catch (e) {
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
 })
 
@@ -113,8 +123,8 @@ bot.action('verify',async (ctx)=>{
 bot.on('photo',async (ctx)=>{
     //To avoid listening commands or messages in group chat
     if(ctx.chat.type != 'private') return null 
-    console.log('photo');
-    browserLog("Photo",ctx)
+    logger.info('Photo', ctx.message)
+    //browserLog("Photo",ctx)
     try{
         //To avoid user uploading the image even if the form fillup and verification is not done.
         if(!ctx.session.formData){
@@ -138,7 +148,6 @@ bot.on('photo',async (ctx)=>{
         })
     }
     catch(e){
-       await ctx.reply(e.response.description)
        throw e
     }
 })
@@ -146,9 +155,9 @@ bot.on('photo',async (ctx)=>{
 //Once the user click on "Join Group" btn, It will trigger this event.
 //Revoke the invite link once user make a 'Join Request'
 bot.on('chat_join_request', async(ctx)=>{
-    console.log('chat_join_request');
-    browserLog("chat_join_request",ctx);
-
+    //console.log('chat_join_request');
+    //browserLog("chat_join_request",ctx);
+    logger.info("chat_join_request",ctx.update)
     try{
         //Revoke the link, so that other user cannot make request using same link
         await ctx.revokeChatInviteLink(ctx.chatJoinRequest.invite_link.invite_link);
@@ -165,14 +174,14 @@ bot.on('chat_join_request', async(ctx)=>{
         )
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
 })
 
 //Check if the 'Approve' and 'Reject' events are indeed performed by admins. Alert others
 bot.action(['approve','reject'], async(ctx,next)=>{
-    console.log("middleware",ctx.callbackQuery.data);
     try{
         const admins = await ctx.getChatAdministrators()
         //browserLog(`Admins - ${ctx.callbackQuery.data}`,admins)
@@ -189,16 +198,17 @@ bot.action(['approve','reject'], async(ctx,next)=>{
 
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
 })
 
 //Approve the user's joining request
 bot.action('approve', async(ctx)=>{
-    console.log('Approve');
-    browserLog("Approved Request", ctx)
-    
+    //console.log('Approve');
+    //browserLog("Approved Request", ctx)
+    logger.info("approve",ctx.update)
     try{
         const cq = ctx.callbackQuery;
         const caption = cq.message.caption;
@@ -213,8 +223,9 @@ bot.action('approve', async(ctx)=>{
         }
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
     finally{
         ctx.answerCbQuery();
@@ -223,9 +234,9 @@ bot.action('approve', async(ctx)=>{
 
 //Show confirmRejectGoBackKeyboard as a confirmation
 bot.action('reject', async(ctx)=>{
-    console.log('reject');
-    browserLog("Reject Request",ctx);
-    
+    //console.log('reject');
+    //browserLog("Reject Request",ctx);
+    logger.info('Reject confirmation', ctx.update)
     try{
         await ctx.editMessageCaption(`${ctx.callbackQuery.message.caption}`,{
             reply_markup:confirmRejectGoBackKeyboard,
@@ -233,8 +244,9 @@ bot.action('reject', async(ctx)=>{
         })
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+       // console.error(e);
+       // await ctx.reply(e.response.description)
+       throw e;
     }
     finally{
         await ctx.answerCbQuery();
@@ -243,15 +255,16 @@ bot.action('reject', async(ctx)=>{
 
 //Provide back functionality after Reject Confirmation
 bot.action('goBack', async (ctx)=>{
-    console.log("goback");
-    browserLog("Go Back",ctx)
-
+    //console.log("goback");
+    //browserLog("Go Back",ctx)
+    logger.info('Go Back', ctx.update)
     try{
         await ctx.editMessageCaption(ctx.callbackQuery.message.caption,{reply_markup: approveRejectKeyboard,parse_mode:'HTML'})
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
     finally{
         await ctx.answerCbQuery()
@@ -260,6 +273,8 @@ bot.action('goBack', async (ctx)=>{
 
 //Reject the user's Chat Joining Request
 bot.action('confirmReject', async(ctx)=>{
+    logger.info('Reject Request', ctx.update)
+
     //await ctx.declineChatJoinRequest()
     const cq = ctx.callbackQuery;
     const caption = cq.message.caption;
@@ -282,8 +297,9 @@ bot.action('confirmReject', async(ctx)=>{
         }
     }
     catch(e){
-        console.error(e);
-        await ctx.reply(e.response.description)
+        //console.error(e);
+        //await ctx.reply(e.response.description)
+        throw e;
     }
     finally{
         await ctx.answerCbQuery()
@@ -292,13 +308,21 @@ bot.action('confirmReject', async(ctx)=>{
 
 //Once the user is approved and added to the group, It will trigger this event.
 bot.on('new_chat_members', async (ctx) => {
-    console.log('new_chat_members');
-    browserLog('new_chat_members',ctx)
+
+    //console.log('new_chat_members');
+    //browserLog('new_chat_members',ctx)
+    logger.info('New Chat Member', ctx.message)
+
+    try{
+        const formData = ctx.session.formData;
+        if(formData) ctx.telegram.sendMessage(formData[formData.length-1],'Your Request to Join the group has been Approved!!!')
+        //Clear the user session since user has joined the group
+        ctx.session = null
+    }
+    catch(e){
+        throw e;
+    }
     
-    const formData = ctx.session.formData;
-    ctx.telegram.sendMessage(formData[formData.length-1],'Your Request to Join the group has been Approved!!!')
-    //Clear the user session since user has joined the group
-    ctx.session = null
 })
 
 //This will Run on both Join as well as Left Event
@@ -315,6 +339,7 @@ bot.on('new_chat_members', async (ctx) => {
 
 //Fecth data from google sheets and verify if the user is exists or not
 async function verifyAndGetFormData(user_id){
+    logger.info("Fetch Form data for user ", {user_id})
     const auth = new google.auth.GoogleAuth({
         keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
         scopes: SCOPES,
@@ -330,11 +355,12 @@ async function verifyAndGetFormData(user_id){
         range:`${SHEET_NAME}!${COLUMNS}`
     })
     const row = data.data.values.find(x=> x.some(y => y == user_id));
-    console.log(row);
+    logger.info("Form Data", row);
     return row;
 }
 
 async function generateChatInviteLink(user_id, name){
+    logger.info("Generating Chat invit link for ", {user_id})
     return await bot.telegram.createChatInviteLink(GROUP_ID,{
         name: `${user_id} ${name}`,
         creates_join_request: true,
@@ -355,19 +381,29 @@ function getUserIdFromCaption(caption){
 }
 
 bot.catch((err, ctx)=>{
-    ctx.reply(err.response.description || err)
-    console.log("Error Caught")
-    console.log(err.response)
-    console.log(ctx);
+    try{
+        logger.error(err, err,ctx.message)
+        let log = `${err.stack.split("\n", 4).join("") || err.message}\n`
+
+        if(ctx){
+            log += `chatId: ${ctx.chat?.id}\nchatType: ${ctx.chat?.type},\nfrom: ${ctx.from.first_name} ${ctx.from.last_name || ''} (${ctx.from.id})
+            text: ${ctx.message?.text}\nOn Event: ${err.onEvent}`
+        }
+
+        bot.telegram.sendMessage(LOGS_GROUP_ID, log)
+    }
+    catch(e){
+        logger.error(e)
+    }
 })
 
 bot.launch({
     allowedUpdates:['callback_query','chat_join_request','message']
 }).then(
-    console.log('Bot is started and listening...')
+    logger.info('Bot is started and listening...')
 ).catch((err) =>{
-    console.log('Unable to start the bot...')
-    console.log(err);
+    logger.info('Unable to start the bot. Please check the error logs...')
+    logger.error(err);
 });
 
 // if (process.env.NODE_ENV === 'production') {
