@@ -417,8 +417,8 @@ if (process.env.NODE_ENV === 'production') {
     bot.launch({
         allowedUpdates:['callback_query','chat_join_request','message'],
         webhook : {
-            domain: `/bot${process.env.URL}`,
-            hookPath: "",
+            domain: process.env.URL,
+            hookPath: `/bot${process.env.BOT_TOKEN}`,
             port: process.env.PORT || 3000,
         }
     }).then(

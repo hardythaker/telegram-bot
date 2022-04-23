@@ -10,6 +10,9 @@
   },
   "author": "Hardik Thaker",
   "license": "ISC",
+  "engines": {
+    "node": "16.x"
+  },
   "dependencies": {
     "googleapis": "^100.0.0",
     "telegraf": "^4.7.0",
