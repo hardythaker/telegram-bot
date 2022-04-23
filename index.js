@@ -29,38 +29,28 @@ const { Telegraf } = require('telegraf');
 const LocalSession = require('telegraf-session-local')
 const logger = require('./logger')
 const {google} = require('googleapis');
-const {SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID, LOGS_GROUP_ID,
-    IMAGE_TEXT, VARIFICATION_FAILED_TEXT, CHAT_JOIN_REQUEST_TEXT, GET_CAPTION_TEXT} = require('./constants');
+const {SCOPES, SHEET_NAME, COLUMNS, LINK_EXPIRES_IN, GET_GREETING_TEXT, GROUP_ID, LOGS_GROUP_ID, EMOJI, VERIFICATION_REJECT_TEXT,
+    PHOTO_BEFORE_VERIFICATION_TEXT, APPROVE_BY_ADMINS_ONLY_TEXT,
+    IMAGE_TEXT, VERIFICATION_FAILED_TEXT, VERIFICATION_SUCCESS_TEXT, CHAT_JOIN_REQUEST_TEXT, GET_CAPTION_TEXT} = require('./constants');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const localSession = new LocalSession({ 
-    database: 'example_db.json',
+    database: 'session.json',
     getSessionKey : (ctx) => ctx.from.id
 })
 
-const emoji = {
-    back : "\u{1F519}",
-    checkMark : "\u{2705}",
-    crossmark : "\u{274C}",
-    magnify: "\u{1F50D}"
-}
-
 const approveRejectKeyboard = {
     inline_keyboard:[
-        [{text:`${emoji.checkMark} Approve`, callback_data: 'approve'}],
-        [{text:`${emoji.crossmark} Reject`, callback_data: 'reject'}]
+        [{text:`${EMOJI.checkMark} Approve`, callback_data: 'approve'}],
+        [{text:`${EMOJI.crossmark} Reject`, callback_data: 'reject'}]
     ]
 }
 
 const confirmRejectGoBackKeyboard = {
     inline_keyboard:[
-        [
-            {text:'Confirm Reject? Yes', callback_data:'confirmReject' }
-        ],
-        [
-            {text: `${emoji.back} Go Back`, callback_data:'goBack' }
-        ]
+        [{text:'Confirm Reject? Yes', callback_data:'confirmReject' }],
+        [{text: `${EMOJI.back} Go Back`, callback_data:'goBack' }]
     ]
 }
 
@@ -79,8 +69,8 @@ bot.start(async (ctx) => {
         await ctx.reply(GET_GREETING_TEXT(fullname),{
             reply_markup:{
                 inline_keyboard:[
-                    [{text:'Form', url }],
-                    [{text:`${emoji.magnify} Verify`, callback_data:'verify' }]
+                    [{text:`${EMOJI.memo} Form`, url }],
+                    [{text:`${EMOJI.magnify} Verify`, callback_data:'verify' }]
                 ]
             },
             parse_mode: 'HTML',
@@ -110,7 +100,7 @@ bot.action('verify',async (ctx)=>{
             await ctx.answerCbQuery()
         }
         else{
-            await ctx.answerCbQuery(VARIFICATION_FAILED_TEXT,{show_alert: true})
+            await ctx.answerCbQuery(VERIFICATION_FAILED_TEXT,{show_alert: true})
         }
     } catch (e) {
         //console.error(e);
@@ -128,7 +118,9 @@ bot.on('photo',async (ctx)=>{
     try{
         //To avoid user uploading the image even if the form fillup and verification is not done.
         if(!ctx.session.formData){
-            return ctx.reply("Alert!!!\n\nKindly first fill the form, click on verify button and then upload the image.")
+            return ctx.reply(PHOTO_BEFORE_VERIFICATION_TEXT,{
+                parse_mode: "HTML"
+            })
         }
         
         //Contains the photo url uploaded by the client  
@@ -169,7 +161,8 @@ bot.on('chat_join_request', async(ctx)=>{
             {
                 reply_markup:approveRejectKeyboard,
                 caption: GET_CAPTION_TEXT(session.formData),
-                protect_content: true
+                protect_content: true,
+                parse_mode: "HTML"
             }
         )
     }
@@ -192,7 +185,7 @@ bot.action(['approve','reject'], async(ctx,next)=>{
         }
 
         //If request is not from admins, show the alert.
-        ctx.answerCbQuery("Only Admins are allowed to perform this operation!!!",{
+        ctx.answerCbQuery(APPROVE_BY_ADMINS_ONLY_TEXT,{
             show_alert: true
         })
 
@@ -288,9 +281,9 @@ bot.action('confirmReject', async(ctx)=>{
             //Update in the group that who rejected
             await ctx.editMessageCaption(`${caption}\nRejected by ${name}`,{reply_markup:{}})
             //Inform the user
-            await ctx.telegram.sendMessage(userId,`Your Request to Join the group has been Rejected!!!
-\nYou can again start the verification by sending <code>/start</code> command to this bot.
-\nPlease make sure you have filled the Google Form with correct data and you are sending the first page of the agreement, to avoid rejection of Joining Request`)
+            await ctx.telegram.sendMessage(userId,VERIFICATION_REJECT_TEXT,{
+                parse_mode:"HTML"
+            })
         }
         else{
             ctx.answerCbQuery('Error: User Rejection failed!!!',{show_alert: true});
@@ -315,7 +308,9 @@ bot.on('new_chat_members', async (ctx) => {
 
     try{
         const formData = ctx.session.formData;
-        if(formData) ctx.telegram.sendMessage(formData[formData.length-1],'Your Request to Join the group has been Approved!!!')
+        if(formData) ctx.telegram.sendMessage(formData[formData.length-1],VERIFICATION_SUCCESS_TEXT,{
+            parse_mode: "HTML"
+        })
         //Clear the user session since user has joined the group
         ctx.session = null
     }
