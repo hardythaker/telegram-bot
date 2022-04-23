@@ -359,6 +359,7 @@ async function verifyAndGetFormData(user_id){
     return row;
 }
 
+//Generate a chat invite link
 async function generateChatInviteLink(user_id, name){
     logger.info("Generating Chat invit link for ", {user_id})
     return await bot.telegram.createChatInviteLink(GROUP_ID,{
@@ -368,6 +369,8 @@ async function generateChatInviteLink(user_id, name){
     })
 }
 
+//Extract the userId from the caption we are sending it to user on a photo.
+//For better integrity it can be shifted to session, but same extraction would be required from Form Data
 function getUserIdFromCaption(caption){
     const regex = /UserID:\s*\d*/i;
     let m, userId = null;
@@ -380,6 +383,7 @@ function getUserIdFromCaption(caption){
     return userId;
 }
 
+//Telegram Error Handler
 bot.catch((err, ctx)=>{
     try{
         logger.error(err, err,ctx.message)
@@ -397,6 +401,7 @@ bot.catch((err, ctx)=>{
     }
 })
 
+
 bot.launch({
     allowedUpdates:['callback_query','chat_join_request','message']
 }).then(
@@ -406,12 +411,35 @@ bot.launch({
     logger.error(err);
 });
 
-// if (process.env.NODE_ENV === 'production') {
-//     bot = new TelegramBot(token);
-//     bot.setWebHook(process.env.HEROKU_URL + bot.token);
-// } else {
-//     bot = new TelegramBot(token, { polling: true });
-// }
+if (process.env.NODE_ENV === 'production') {
+    // bot = new TelegramBot(token);
+    // bot.setWebHook(process.env.HEROKU_URL + bot.token);
+    bot.launch({
+        allowedUpdates:['callback_query','chat_join_request','message'],
+        webhook : {
+            domain: `/bot${process.env.URL}`,
+            hookPath: "",
+            port: process.env.PORT || 3000,
+        }
+    }).then(
+        logger.info('Bot is started and listening on Webhook...')
+    ).catch((err) =>{
+        logger.info('Unable to start the bot on webhook. Please check the error logs...')
+        logger.error(err);
+    });
+} else {
+    //bot = new TelegramBot(token, { polling: true });
+    bot.launch({
+        allowedUpdates:['callback_query','chat_join_request','message'],
+    }).then(
+        logger.info('Bot is started and listening...')
+    ).catch((err) =>{
+        logger.info('Unable to start the bot. Please check the error logs...')
+        logger.error(err);
+    });
+}
+
+
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
