@@ -402,14 +402,14 @@ bot.catch((err, ctx)=>{
 })
 
 
-bot.launch({
-    allowedUpdates:['callback_query','chat_join_request','message']
-}).then(
-    logger.info('Bot is started and listening...')
-).catch((err) =>{
-    logger.info('Unable to start the bot. Please check the error logs...')
-    logger.error(err);
-});
+// bot.launch({
+//     allowedUpdates:['callback_query','chat_join_request','message']
+// }).then(
+//     logger.info('Bot is started and listening...')
+// ).catch((err) =>{
+//     logger.info('Unable to start the bot. Please check the error logs...')
+//     logger.error(err);
+// });
 
 if (process.env.NODE_ENV === 'production') {
     // bot = new TelegramBot(token);
